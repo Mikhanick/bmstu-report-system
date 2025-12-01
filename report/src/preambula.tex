@@ -1,0 +1,261 @@
+\documentclass[a4paper, 12pt]{extreport}
+
+% Под pdflatex
+\usepackage{cmap} 
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc}
+\usepackage[english,russian]{babel}
+
+\babelprovide[hyphenrules=russian]{russian}
+% Под lualatex \usepackage{fontspec}
+%\usepackage{polyglossia}
+%\setmainlanguage{russian}
+%\setotherlanguage{english}
+
+% Шрифты с кириллицей
+%\setmainfont{CMU Serif}[
+%Extension=.ttf,
+%UprightFont=*-Regular,
+%BoldFont=*-Bold,
+%ItalicFont=*-Italic,
+%BoldItalicFont=*-BoldItalic
+%]
+%\setsansfont{CMU Sans}
+%\setmonofont{CMU Mono}
+
+%\usepackage{amssymb,amsfonts,amsmath,mathtext,cite,enumerate,float}
+%\usepackage{glyphtounicode}
+%\pdfgentounicode=1
+%\usepackage{glyphtounicode}
+%\pdfgentounicode=1
+\usepackage{amssymb,amsfonts,amsmath,cite,enumerate,float}
+
+% Векторный шрифт
+%\IfFileExists{tempora.sty}{%
+%	\usepackage{tempora}%
+%}{
+%	\usepackage{mathptmx}%
+%}
+% убрал, потому что скачал локально cm-super, который подставляется автоматически
+\renewcommand{\rmdefault}{cmr}
+
+\usepackage{pgfplots}
+\usepackage{graphicx}
+\usepackage{tocloft}
+\usepackage{listings}
+\usepackage[justification=centering]{caption}
+\captionsetup[table]{justification=centering,singlelinecheck=false}
+%\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{geometry}
+\usepackage{indentfirst}
+\usepackage{pdfpages}
+\usepackage{enumerate,letltxmacro}
+%\usepackage{threeparttable}
+\usepackage{hyperref}
+\usepackage{flafter}
+\usepackage{enumitem}
+%\usepackage{multirow}
+\usepackage{ragged2e}
+
+%\usepackage[figure,table]{totalcount}
+%\usepackage{lastpage}
+
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{geometry}
+\usepackage[table]{xcolor}
+\usepackage{colortbl}
+%\usepackage[figure,table,enumiv]{totalcount}
+\usepackage{booktabs}
+
+\usepackage{subcaption}
+
+%\usepackage{placeins}
+
+
+\setlist{nosep}
+
+\newcommand{\ssr}[1]{\begin{center}
+    \LARGE\bfseries{#1}
+  \end{center} \addcontentsline{toc}{chapter}{#1}  }
+
+\makeatletter
+\renewcommand\LARGE{\@setfontsize\LARGE{22pt}{20}}
+\renewcommand\Large{\@setfontsize\Large{20pt}{20}}
+\renewcommand\large{\@setfontsize\large{16pt}{20}}
+\makeatother
+\RequirePackage{titlesec}
+\titleformat{\chapter}[block]{\hspace{\parindent}\large\bfseries}{\thechapter}{0.5em}{\large\bfseries\raggedright}
+\titleformat{name=\chapter,numberless}[block]{\hspace{\parindent}}{}{0pt}{\large\bfseries\centering}
+\titleformat{\section}[block]{\hspace{\parindent}\large\bfseries}{\thesection}{0.5em}{\large\bfseries\raggedright}
+\titleformat{\subsection}[block]{\hspace{\parindent}\large\bfseries}{\thesubsection}{0.5em}{\large\bfseries\raggedright}
+\titleformat{\subsubsection}[block]{\hspace{\parindent}\large\bfseries}{\thesubsection}{0.5em}{\large\bfseries\raggedright}
+\titlespacing{\chapter}{12.5mm}{-22pt}{10pt}
+\titlespacing{\section}{12.5mm}{10pt}{10pt}
+\titlespacing{\subsection}{12.5mm}{10pt}{10pt}
+\titlespacing{\subsubsection}{12.5mm}{10pt}{10pt}
+
+\makeatletter
+\renewcommand{\@biblabel}[1]{#1.}
+\makeatother
+
+\geometry{left=30mm}
+\geometry{right=10mm}
+\geometry{top=20mm}
+\geometry{bottom=20mm}
+
+\onehalfspacing
+
+\renewcommand{\theenumi}{\arabic{enumi}}
+\renewcommand{\labelenumi}{\arabic{enumi}\text{)}}
+\renewcommand{\theenumii}{.\arabic{enumii}}
+\renewcommand{\labelenumii}{\asbuk{enumii}\text{)}}
+\renewcommand{\theenumiii}{.\arabic{enumiii}}
+\renewcommand{\labelenumiii}{\arabic{enumi}.\arabic{enumii}.\arabic{enumiii}.}
+
+\renewcommand{\cftchapleader}{\cftdotfill{\cftdotsep}}
+
+\addto\captionsrussian{\renewcommand{\figurename}{Рисунок}}
+\DeclareCaptionLabelSeparator{dash}{~---~}
+\captionsetup{labelsep=dash}
+
+\captionsetup[figure]{justification=centering,labelsep=dash}
+
+\graphicspath{{images/}}%путь к рисункам
+
+\newcommand{\floor}[1]{\lfloor #1 \rfloor}
+
+\renewcommand{\lstlistingname}{Листинг}
+
+
+\DeclareCaptionFormat{listing}{\raggedright#1#2#3}
+\captionsetup[lstlisting]{format=listing,singlelinecheck=false,justification=raggedright}
+
+\lstset{ %
+    basicstyle=\small\sffamily,
+    resetmargins=true,
+%    language=rust,
+    numbers=left,                % где поставить нумерацию строк (слева\справа)
+    numberstyle=\tiny,           % размер шрифта для номеров строк
+    stepnumber=1,                % размер шага между двумя номерами строк
+    numbersep=5pt,               % как далеко отстоят номера строк от подсвечиваемого кода
+    showspaces=false,            % показывать или нет пробелы специальными отступами
+    showstringspaces=false,      % показывать или нет пробелы в строках
+    showtabs=false,              % показывать или нет табуляцию в строках
+    frame=single,                % рисовать рамку вокруг кода
+    tabsize=2,                   % размер табуляции по умолчанию равен 2 пробелам
+    captionpos=t,                % позиция заголовка вверху [t] или внизу [b] 
+    breaklines=true,             % автоматически переносить строки (да\нет)
+    breakatwhitespace=false,     % переносить строки только если есть пробел
+    escapeinside={\#*}{*)},      % если нужно добавить комментарии в коде
+    keepspaces=true
+}
+
+\pgfplotsset{width=0.85\linewidth, height=0.5\columnwidth}
+
+\linespread{1.3}
+
+\parindent=1.25cm
+
+\def\labelitemi{---}
+\setlist[itemize]{
+    leftmargin=\parindent,
+    itemindent=1.8em,
+    labelsep=-0.3em,
+    align=left,
+    parsep=0pt,
+    itemsep=0pt,
+    topsep=0pt,
+    before={\setlength{\parindent}{12.5mm}}
+}
+\setlist[enumerate]{leftmargin=1.25cm, itemindent=0.55cm}
+
+\newcommand{\specialcell}[2][c]{%
+    \begin{tabular}[#1]{@{}c@{}}#2\end{tabular}}
+
+\frenchspacing
+
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=false,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    pdftitle={Лабораторная работа                                                                                    },
+    pdfpagemode=FullScreen,
+}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+%%\captionsetup[listing]{justification=raggedright}
+\captionsetup[]{justification=raggedright}
+
+\titleformat{\part}[block]
+{\large\bfseries}{\hspace{12.5mm}\thechapter}{0.5em}{\large\centering}
+
+\titleformat{\chapter}[block]
+{\large\bfseries}{\hspace{12.5mm}\thechapter}{0.5em}{\large\justifying}
+
+\titleformat{\section}[block]
+{\large\bfseries}{\hspace{12.5mm}\thesection}{0.5em}{\large\justifying}
+\renewcommand{\thesection}{\arabic{chapter}.\arabic{section}.}
+
+\titleformat{\subsection}[block]
+{\large\bfseries}{\hspace{12.5mm}\thesubsection}{0.5em}{\large\justifying}
+\renewcommand{\thesubsection}{\arabic{chapter}.\arabic{section}.\arabic{subsection}.}
+
+\titleformat{\subsubsection}[block]
+{\large\bfseries}{\hspace{12.5mm}\thesubsubsection}{0.5em}{\large\justifying}
+\renewcommand{\thesubsubsection}{\arabic{chapter}.\arabic{section}.\arabic{subsection}.\arabic{subsubsection}.}
+
+% Формат для ненумерованных разделов (section*)
+\titleformat{name=\section,numberless}[block]
+{\large\bfseries}{\hspace{12.5mm}}{0em}{\large\raggedright}
+
+% Формат для ненумерованных подразделов (subsection*)
+\titleformat{name=\subsection,numberless}[block]
+{\large\bfseries}{\hspace{12.5mm}}{0em}{\large\raggedright}
+
+% Формат для ненумерованных подразделов (subsubsection*)
+\titleformat{name=\subsubsection,numberless}[block]
+{\large\bfseries}{\hspace{12.5mm}}{0em}{\large\raggedright}
+
+\renewcommand{\thesubfigure}{\asbuk{subfigure}}
+\renewcommand{\cfttoctitlefont}{\LARGE\bfseries\centering}
+
+
+
+\lefthyphenmin=2
+\righthyphenmin=2
+\tolerance=2000
+\emergencystretch=10pt
+\hyphenpenalty=50
+\exhyphenpenalty=50
+
+\usepackage{listings}
+\usepackage{xcolor}
+
+\lstdefinestyle{mydefault}{
+    frame=single,
+    xleftmargin=0.4cm,
+    framexleftmargin=-0.3cm,
+    framesep=0.3cm,
+    linewidth=\dimexpr\linewidth-0.7cm\relax,
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    tabsize=2
+}
+
+\lstnewenvironment{mylisting}[3][]{
+    \lstset{
+        style=mydefault,
+        caption={#2},
+        label={#3},
+        #1
+    }
+}{}
+
+% для автоматизации реферата
+\usepackage{lastpage}
+\usepackage[figure,table,enumiv]{totalcount}
