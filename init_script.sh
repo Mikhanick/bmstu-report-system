@@ -30,7 +30,7 @@ if [ ! -d "$src_dir" ]; then
 fi
 
 # Проверка обязательных компонентов
-for item in Makefile scripts src; do
+for item in makefile scripts src; do
     if [ ! -e "$src_dir/$item" ]; then
         echo -e "${RED}❌ Ошибка: Отсутствует обязательный элемент: $src_dir/$item${NC}" >&2
         exit 1
@@ -48,9 +48,9 @@ if [ ! -d "$dest_dir" ]; then
     echo -e "${YELLOW}🆕 Создана целевая директория: $dest_dir${NC}"
 fi
 
-# Копирование Makefile с полной перезаписью
-echo -e "${BLUE}📄 Копирование Makefile с перезаписью...${NC}"
-cp -vf "$src_dir/Makefile" "$dest_dir/"
+# Копирование makefile с полной перезаписью
+echo -e "${BLUE}📄 Копирование makefile с перезаписью...${NC}"
+cp -vf "$src_dir/makefile" "$dest_dir/"
 
 # Копирование scripts с полной перезаписью (рекурсивно)
 echo -e "${BLUE}🔄 Копирование scripts с полной перезаписью...${NC}"
@@ -63,6 +63,6 @@ mkdir -p "$dest_dir/src"
 cp -r --update=none -vf "$src_dir/src/"* "$dest_dir/src/" 2>/dev/null || true
 
 echo -e "\n${GREEN}✅ Успешно завершено!${NC}"
-echo -e "• Makefile и scripts: ${YELLOW}перезаписаны${NC}"
+echo -e "• makefile и scripts: ${YELLOW}перезаписаны${NC}"
 echo -e "• src: ${GREEN}добавлены только новые файлы${NC}"
 echo -e "• Результат: ${dest_dir}"
