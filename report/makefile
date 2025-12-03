@@ -12,7 +12,7 @@ BLUE = \033[34m
 RESET = \033[0m
 
 
-.PHONY: pdf pdf-clean pdf-synctex lint-tex open-pdf generate-plantuml check-tools
+.PHONY: pdf clean pdf-synctex lint-tex open-pdf generate-plantuml check-tools
 
 # ===== PDF REPORT BUILD CONFIGURATION =====
 PDF_BUILD_DIR := $(PDF_BUILD_DIR_NAME)
@@ -60,7 +60,7 @@ LINT_MARKER := $(PDF_BUILD_DIR)/.linted
 # ===== PDF REPORT BUILD RULES =====
 pdf: check-tools generate-plantuml $(PDF_GENERATED_TABLES) $(PDF_TARGET)
 
-pdf-synctex: pdf-clean $(LINT_MARKER) $(PDF_GENERATED_TABLES) $(BUILD_IMAGE_FILES)
+pdf-synctex: clean $(LINT_MARKER) $(PDF_GENERATED_TABLES) $(BUILD_IMAGE_FILES)
 	@echo "=== Сборка PDF отчёта с synctex ==="
 	pdflatex -synctex=1 \
 		-output-directory=$(PDF_BUILD_DIR) \
@@ -157,6 +157,6 @@ open-pdf: pdf
 		echo -e "$(RED)PDF-файл не найден: $(PDF_TARGET)$(RESET)"; \
 	fi
 
-pdf-clean:
+clean:
 	@echo "Очистка PDF build-директории и сгенерированных файлов..."
 	@rm -rf $(PDF_BUILD_DIR)
