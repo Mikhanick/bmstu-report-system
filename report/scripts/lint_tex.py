@@ -18,6 +18,7 @@ def check_forbidden_words(text, filepath):
         'рассмотрим',
         'обозначим',
         'эксперим',
+        ' мы ',
     ]
 
     errors_found = 0
@@ -127,43 +128,47 @@ def replace_words_with_yo(text, filepath):
 
     return 0, text
 
-
 def fix_equations_before_text(text, filepath):
     count_commas = 0  # Счётчик замен на запятые (перед "где")
     count_dots = 0  # Счётчик замен на точки (перед заглавными буквами)
 
-    # 1. Обработка случаев с "где"
+    # 1. Обработка случаев с "где" - ДОБАВЛЕНА ПУСТАЯ СТРОКА
     pattern_where = r"(\\begin{equation}[\s\S]+?\\end{equation})\s+(?=[Гг]де\b)"
 
     def replace_where(match):
         nonlocal count_commas
         count_commas += 1
-        return _add_punctuation_before_end(match.group(1), ",", filepath) + "\n"
+        # Добавляем ДВЕ новой строки для создания пустой строки
+        return _add_punctuation_before_end(match.group(1), ",", filepath) + "\n\n"
 
     text = re.sub(pattern_where, replace_where, text, flags=re.DOTALL)
 
-    # 2. Обработка случаев с заглавной буквы
+    # 2. Обработка случаев с заглавной буквы (сохраняем оригинальное поведение)
     pattern_upper = r"(\\begin{equation}[\s\S]+?\\end{equation})\s+(?=[А-ЯA-Z])"
 
     def replace_upper(match):
         nonlocal count_dots
         count_dots += 1
+        # Сохраняем одну новую строку (без пустой строки)
         return _add_punctuation_before_end(match.group(1), ".", filepath) + "\n"
 
     text = re.sub(pattern_upper, replace_upper, text, flags=re.DOTALL)
+
+    # 3. Исправление артефактов с \label (обновлены шаблоны для учёта пустых строк)
     text = re.sub(
-        r',(\s*\n\s*\\label\{[^}]*\},\s*\n\s*\\end\{equation\})',
-        r'\1',
+        r",(\s*\n\s*\\label\{[^}]*\},\s*\n\s*\\end\{equation\})",
+        r"\1",
         text,
-        flags=re.MULTILINE
+        flags=re.MULTILINE,
     )
     text = re.sub(
-        r'\.(\s*\n\s*\\label\{[^}]*\}\.\s*\n\s*\\end\{equation\})',
-        r'\1',
+        r"\.(\s*\n\s*\\label\{[^}]*\}\.\s*\n\s*\\end\{equation\})",
+        r"\1",
         text,
-        flags=re.MULTILINE
+        flags=re.MULTILINE,
     )
     return 0, text
+
 
 def _add_punctuation_before_end(eq_block, punctuation, filepath):
     """Добавляет знак препинания (',' или '.') перед \\end{equation}"""
@@ -199,9 +204,10 @@ def _add_punctuation_before_end(eq_block, punctuation, filepath):
 
     # Добавляем знак препинания
     lines[prev_idx] = last_line + punctuation
+
     info(f"Добавлен знак препинания в {filepath}: {last_line}")
     result = "\n".join(lines)
-    
+
     return result
     
 
@@ -215,6 +221,69 @@ def check_todo_comments(text, filepath):
         if match:
             todo_content = match.group(1).strip()
             warning(f"{filepath}:{i}: найден #TODO: {todo_content}")
+    return 0, text
+
+
+def check_parentheses_comments(text, filepath):
+    r"""
+    Проверяет текст на наличие слов в скобках вне математических контекстов LaTeX.
+
+    Игнорируются:
+    - Строки с флагом % #lint-ignore в конце
+    - Скобки внутри $...$, $$...$$
+    - Скобки внутри \\begin{equation}...\end{equation}
+
+    Допускается наличие запятых внутри скобок (например: "(а, б, в)").
+    """
+
+    if (
+        "preambula.tex" in str(filepath)
+        or "title.tex" in str(filepath)
+        or "links.tex" in str(filepath)
+    ):
+        return 0, text
+    in_equation = False  # Флаг нахождения внутри окружения equation
+    ignore_pattern = re.compile(r"%\s*#lint-ignore\s*$")
+    equation_begin_pattern = re.compile(r"\\begin\{equation\*?\}")
+    equation_end_pattern = re.compile(r"\\end\{equation\*?\}")
+    math_pattern = re.compile(
+        r"\$\$.*?\$\$|\$.*?\$"
+    )  # Нежадный поиск математических выражений
+    parentheses_pattern = re.compile(r"(?<!\\)\([^)]*[a-zA-Zа-яА-ЯёЁ][^)]*\)")
+
+    lines = text.splitlines()
+    for i, line in enumerate(lines, start=1):
+        # 1. Проверка на явное игнорирование строки
+        if ignore_pattern.search(line):
+            continue
+
+        # 2. Обработка состояния окружения equation
+        if in_equation:
+            if equation_end_pattern.search(line):
+                in_equation = False
+            continue  # Все строки внутри equation пропускаются
+
+        # Проверка на начало equation в текущей строке
+        if equation_begin_pattern.search(line):
+            in_equation = True
+            # Особый случай: начало и конец equation в одной строке
+            if equation_end_pattern.search(line):
+                in_equation = False
+            continue
+
+        # 3. Удаление математических выражений из строки
+        cleaned_line = math_pattern.sub("", line)
+
+        # 4. Поиск скобок с буквами в оставшемся тексте
+        for match in parentheses_pattern.finditer(cleaned_line):
+            content = match.group()[1:-1].strip()
+            if re.search(r"[a-zA-Zа-яА-ЯёЁ]", content):
+                warning(
+                    f"{filepath}:{i}: обнаружены слова в скобках вне математического контекста: "
+                    f"{match.group()}"
+                    "Если используем в скобках, значит неважно, тогда либо убираем скобки, либо удаляем. Чтобы игнорировать варнинг: поставить '% #lint-ignore' в конце"
+                )
+
     return 0, text
 
 # ========================
@@ -297,6 +366,7 @@ def main():
         replace_words_with_yo,
         check_todo_comments,
         fix_equations_before_text,
+        check_parentheses_comments,
     ]
 
     global_error = 0

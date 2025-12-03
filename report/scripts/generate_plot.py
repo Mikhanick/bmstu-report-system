@@ -525,7 +525,7 @@ def main():
             else:
                 plt.plot(x_vals, y_vals, "bo-", linewidth=2, markersize=8, alpha=0.8)
 
-    plt.title(title, fontsize=14, pad=20)
+    # plt.title(title, fontsize=14, pad=20)
     plt.xlabel(xlabel, fontsize=12)
     plt.ylabel(ylabel, fontsize=12)
     plt.grid(True, linestyle="--", alpha=0.7)
