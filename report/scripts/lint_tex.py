@@ -350,9 +350,6 @@ def format_variables_enumerate(text, filepath):
         )
         return 0, new_text
 
-    info(
-        f"{filepath}: не найдено описаний переменных для форматирования в itemize (требуется >2 переменных)"
-    )
     return 0, text
 
 def _add_punctuation_before_end(eq_block, punctuation, filepath):
