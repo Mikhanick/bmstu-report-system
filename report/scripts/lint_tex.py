@@ -128,18 +128,94 @@ def replace_words_with_yo(text, filepath):
 
     return 0, text
 
+
+
+def parse_equation_descriptions_simple(text: str) -> list:
+    """
+    Парсит описания переменных после формул.
+    Ищет строки, начинающиеся с 'где' и заканчивающиеся \n
+    """
+    descriptions = []
+
+    # Шаблон для поиска: формула + строка начинающаяся с "где"
+    pattern = r"\\begin{equation}([\s\S]+?)\\end{equation}\s*\n\s*([Гг]де\b[^\n]+)\n"
+
+    for match in re.finditer(pattern, text):
+        eq_content = match.group(1).strip()
+        where_line = match.group(2).strip()
+
+        # Извлекаем текст после "где"
+        where_text = re.sub(r"^[Гг]де\s*", "", where_line, count=1)
+
+        # Парсим переменные из строки
+        variables = parse_variables_simple(where_text)
+
+        descriptions.append(
+            {
+                "equation_content": eq_content,
+                "where_text": where_text,
+                "variables": variables,
+                "position": match.start(),
+            }
+        )
+
+    return descriptions
+
+
+def parse_variables_simple(where_text: str) -> list:
+    """
+    Парсит переменные из строки после 'где'.
+    Разделяет по точкам с запятой и обрабатывает каждую часть.
+    """
+    variables = []
+
+    # Разделяем строку по точкам с запятой
+    parts = [part.strip() for part in where_text.split(";") if part.strip()]
+
+    for part in parts:
+        # Ищем разделитель между переменной и описанием
+        # Поддерживаем форматы: "--- ", "- ", ": ", "— "
+        separator_patterns = [
+            r"^(.*?)\s*---\s*(.*?)$",
+            r"^(.*?)\s*-\s*(.*?)$",
+            r"^(.*?)\s*:\s*(.*?)$",
+            r"^(.*?)\s*—\s*(.*?)$",
+        ]
+
+        parsed = False
+        for pattern in separator_patterns:
+            match = re.match(pattern, part)
+            if match:
+                var_part = match.group(1).strip()
+                desc_part = match.group(2).strip()
+
+                # Удаляем точку в конце описания, если есть
+                desc_part = re.sub(r"[.]$", "", desc_part).strip()
+
+                variables.append(
+                    {"variable": var_part, "description": desc_part, "raw_text": part}
+                )
+                parsed = True
+                break
+
+        # Если не удалось разделить, сохраняем как есть
+        if not parsed:
+            variables.append({"variable": part, "description": "", "raw_text": part})
+
+    return variables
+
 def fix_equations_before_text(text, filepath):
     count_commas = 0  # Счётчик замен на запятые (перед "где")
     count_dots = 0  # Счётчик замен на точки (перед заглавными буквами)
 
-    # 1. Обработка случаев с "где" - ДОБАВЛЕНА ПУСТАЯ СТРОКА
+    # 1. Обработка случаев с "где"
     pattern_where = r"(\\begin{equation}[\s\S]+?\\end{equation})\s+(?=[Гг]де\b)"
 
     def replace_where(match):
         nonlocal count_commas
         count_commas += 1
         # Добавляем ДВЕ новой строки для создания пустой строки
-        return _add_punctuation_before_end(match.group(1), ",", filepath) + "\n\n"
+        return _add_punctuation_before_end(match.group(1), ",", filepath) + "\n"
 
     text = re.sub(pattern_where, replace_where, text, flags=re.DOTALL)
 
@@ -169,6 +245,115 @@ def fix_equations_before_text(text, filepath):
     )
     return 0, text
 
+def format_variables_enumerate(text, filepath):
+    """
+    Форматирует описания переменных после формул.
+    Если в описании после 'где' содержится больше двух переменных,
+    заменяет текст на enumerate окружение с подробным логированием.
+    """
+    # Ищем все блоки с формулами и описаниями
+    pattern = r"(\\begin{equation}[\s\S]+?\\end{equation})\s*\n\s*([Гг]де\b[^\n]+)\n"
+
+    # Собираем все замены для последующего применения
+    replacements = []
+    count_replacements = 0
+    detailed_logs = []
+    total_variables_processed = 0
+
+    for match in re.finditer(pattern, text):
+        eq_block = match.group(1)
+        where_line = match.group(2)
+        full_match = match.group(0)
+        start_pos = match.start()
+        end_pos = match.end()
+
+        # Извлекаем текст после "где"
+        where_text = re.sub(r"^[Гг]де\s*", "", where_line, count=1).strip()
+
+        # Парсим переменные
+        variables = parse_variables_simple(where_text)
+
+        # Проверяем, нужно ли форматировать (больше 2 переменных)
+        if len(variables) > 2:
+            count_replacements += 1
+            total_variables_processed += len(variables)
+
+            # Создаем itemize окружение
+            enum_items = []
+            for var in variables:
+                if var["description"]:
+                    enum_items.append(
+                        f"\\item {var['variable']} --- {var['description']}"
+                    )
+                else:
+                    enum_items.append(f"\\item {var['variable']}")
+
+            enum_text = (
+                "\\begin{itemize}\n" + "\n".join(enum_items) + "\n\\end{itemize}"
+            )
+
+            # Формируем замену: сохраняем формулу + добавляем форматированный текст
+            new_block = f"{eq_block}\nгде\n{enum_text}\n"
+
+            # Подготавливаем подробный лог
+            original_vars = "\n".join([f"  - {var['raw_text']}" for var in variables])
+            formatted_vars = "\n".join(
+                [
+                    f"  \\item {var['variable']} --- {var['description']}"
+                    for var in variables
+                    if var["description"]
+                ]
+            )
+
+            log_message = (
+                f"\n{'=' * 60}\n"
+                f"ФАЙЛ: {filepath}\n"
+                f"НАЙДЕН БЛОК ДЛЯ ФОРМАТИРОВАНИЯ:\n"
+                f"Оригинальный текст после 'где':\n"
+                f"  {where_line}\n\n"
+                f"Распарсенные переменные ({len(variables)} шт.):\n"
+                f"{original_vars}\n\n"
+                f"СФОРМИРОВАНО СЛЕДУЮЩЕЕ ОКРУЖЕНИЕ itemize:\n"
+                f"\\begin{{itemize}}\n"
+                f"{formatted_vars}\n"
+                f"\\end{{itemize}}\n\n"
+                f"ЗАМЕНА:\n"
+                f"БЫЛО:\n{full_match.strip()}\n\n"
+                f"СТАЛО:\n{new_block.strip()}\n"
+                f"{'=' * 60}"
+            )
+            detailed_logs.append(log_message)
+            replacements.append((start_pos, end_pos, new_block))
+
+    # Применяем замены в обратном порядке, чтобы не сбивать позиции
+    new_text = text
+    for start, end, replacement in reversed(replacements):
+        new_text = new_text[:start] + replacement + new_text[end:]
+
+    if count_replacements > 0:
+        # Выводим все детальные логи
+        for log in detailed_logs:
+            info(log)
+
+        # Простая и надежная статистика
+        summary_message = (
+            f"\n{'*' * 80}\n"
+            f"ИТОГОВАЯ СТАТИСТИКА ПО ФАЙЛУ {filepath}:\n"
+            f"- Найдено блоков с описаниями переменных для форматирования: {count_replacements}\n"
+            f"- Всего переменных обработано: {total_variables_processed}\n"
+            f"{'*' * 80}"
+        )
+        info(summary_message)
+
+        info(
+            f"{filepath}: отформатировано {count_replacements} описаний переменных в itemize окружения"
+        )
+        return 0, new_text
+
+    info(
+        f"{filepath}: не найдено описаний переменных для форматирования в itemize (требуется >2 переменных)"
+    )
+    return 0, text
 
 def _add_punctuation_before_end(eq_block, punctuation, filepath):
     """Добавляет знак препинания (',' или '.') перед \\end{equation}"""
@@ -358,7 +543,6 @@ def main():
 
     rules = [
         check_forbidden_words,
-        fix_lists,
         process_bibliography_order,
         replace_typographic_symbols,
         replace_typographic_dashes,
@@ -366,6 +550,8 @@ def main():
         replace_words_with_yo,
         check_todo_comments,
         fix_equations_before_text,
+        format_variables_enumerate,
+        fix_lists,
         check_parentheses_comments,
     ]
 

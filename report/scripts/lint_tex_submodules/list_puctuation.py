@@ -1,11 +1,12 @@
 import re
 from .lint_logging import info
 
+
 def fix_lists(text, filepath):
     """
     Обработка списков itemize/enumerate с учетом LaTeX-команд и аббревиатур.
     Не изменяет первую букву если:
-    - текст начинается с LaTeX-команды (\command)
+    - текст начинается с LaTeX-команды (\command), математического окружения ($...$, \[...\], \(...\))
     - в первом слове больше одной заглавной буквы (аббревиатуры)
     """
     lines = text.splitlines()
@@ -34,17 +35,40 @@ def fix_lists(text, filepath):
                 i += 1
                 continue
 
-            # 3. Анализ текста перед списком
+            # 3. Анализ текста перед списком - расширенный контекст
             pre_line_idx = start_idx - 1
-            while pre_line_idx >= 0 and lines[pre_line_idx].strip() == "":
+            context_lines = []
+
+            # Собираем контекст до пустой строки или начала файла (максимум 5 строк)
+            while pre_line_idx >= 0 and len(context_lines) < 5:
+                stripped = lines[pre_line_idx].strip()
+                if stripped == "":
+                    break  # Останавливаемся на пустой строке
+                context_lines.append(stripped)
                 pre_line_idx -= 1
 
-            if pre_line_idx < 0:
+            if not context_lines:
                 i = end_idx + 1
                 continue
 
-            pre_line = lines[pre_line_idx]
-            ends_with_colon = pre_line.rstrip().endswith(":")
+            # Восстанавливаем хронологический порядок (от старых строк к новым)
+            context_lines.reverse()
+            full_context = " ".join(context_lines)
+
+            # Проверяем контекст на наличие двоеточия или слова "где" в конце
+            ends_with_colon = False
+            if ":" in full_context:
+                ends_with_colon = True
+            else:
+                # Ищем слово "где" в конце контекста
+                if re.search(r'\bгде\b\s*$', full_context, re.IGNORECASE):
+                    ends_with_colon = True
+                # Или если "где" находится в конце любой из строк контекста
+                elif any(re.search(r'\bгде\b\s*$', line, re.IGNORECASE) for line in context_lines):
+                    ends_with_colon = True
+
+            # Для обратной совместимости, используем ближайшую строку для lint-ignore
+            pre_line = context_lines[-1]  # Ближайшая строка к списку
             has_lint_ignore_before = "% #lint-ignore" in pre_line
 
             # 4. Сбор элементов списка
@@ -130,11 +154,15 @@ def fix_lists(text, filepath):
                 # === Проверка перед обработкой первой буквы ===
                 should_process_first_letter = True
 
-                # 1. Проверка на LaTeX-команды в начале
-                if new_after_item.startswith("\\"):
+                # 1. Проверка на LaTeX-конструкции в начале (расширенная)
+                # Ищем LaTeX-команды, математические окружения и специальные символы
+                if re.match(r"^(\$|\\[a-zA-Z]|\\[^a-zA-Z]|\\\(|\\\[)", new_after_item):
+                    should_process_first_letter = False
+                
+                if re.match(r'^[<>\s]*(?:\$|\\[a-zA-Z]+)', new_after_item):
                     should_process_first_letter = False
 
-                # 2. Проверка на аббревиатуры в первом слове
+                # 2. Проверка на аббревиатуры в первом слове (только если ещё не отключено)
                 if should_process_first_letter:
                     first_word_end = len(new_after_item)
                     for pos, char in enumerate(new_after_item):
