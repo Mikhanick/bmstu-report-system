@@ -5,6 +5,7 @@ from pathlib import Path
 from lint_tex_submodules.lint_logging import warning, error, info
 from lint_tex_submodules.list_puctuation import fix_lists
 from lint_tex_submodules.links_linter import process_bibliography_order
+from lint_tex_submodules.bibitem_formatting import BibliographyValidator, validate_single_entry
 
 
 # ========================
@@ -468,6 +469,62 @@ def check_parentheses_comments(text, filepath):
 
     return 0, text
 
+def validate_bibliography_entries(text, filepath):
+    """Проверяет библиографические записи на соответствие формату ГОСТ с помощью bibitem_formatting.BibliographyValidator"""
+
+    # Проверяем, является ли файл файлом библиографии
+    if "links.tex" not in str(filepath) and "bibliography" not in str(filepath).lower():
+        return 0, text
+
+    # Находим все записи \bibitem
+    bibitem_pattern = re.compile(r'\\bibitem\{[^\}]+\}.*?(?=\\bibitem\{|\\end\{|$)', re.DOTALL)
+    matches = bibitem_pattern.findall(text)
+
+    total_warnings = 0
+    total_errors = 0
+
+    validator = BibliographyValidator()
+
+    for match in matches:
+        # Валидируем каждую запись
+        result = validator.validate_entry(match)
+
+        # Находим точную позицию вхождения в тексте для правильного определения строки
+        match_pos = text.find(match.strip())
+        if match_pos != -1:
+            # Подсчитываем номер строки до позиции вхождения
+            line_number = text.count('\n', 0, match_pos) + 1
+        else:
+            # Если точное совпадение не найдено, ищем частичное совпадение
+            line_number = 1
+            for i, line in enumerate(text.splitlines(), start=1):
+                if match.strip()[:50] in line:  # Ищем первые 50 символов
+                    line_number = i
+                    break
+
+        # Выводим предупреждения для каждого варнинга из результата
+        for warn_msg in result.get("warnings", []):
+            warning(f"{filepath}:{line_number}: {warn_msg}")
+            total_warnings += 1
+
+        for error_msg in result.get("errors", []):
+            error(f"{filepath}:{line_number}: {error_msg}")
+            total_errors += 1
+
+    # Если есть хотя бы одно предупреждение или ошибка, выводим примеры правильного форматирования
+    if total_warnings > 0 or total_errors > 0:
+        info(f"\n{filepath}: Ниже приведены примеры правильного форматирования библиографических записей:")
+        info("\\bibitem{kuznetsov2022}")
+        info("Кузнецов А.В. Алгоритмы машинного обучения / Кузнецов А.В., Смирнов Б.И., Попов В.Г., Васильев Г.Д. // Труды Международной конференции по искусственному интеллекту. -- 2022. -- С. 145--158.")
+        info("\\bibitem{zamir2021mprnet}")
+        info("Zamir S. W. Multi-Stage Progressive Image Restoration (MPRNet) / Zamir S. W. [и др.] // Proc. CVPR. -- 2021. -- С. 14821--14831.")
+        info("\\bibitem{levin_blind}")
+        info("Levin A., Durand F., Freeman W. T. Understanding and Evaluating Blind Deconvolution Algorithms // Proc. CVPR. -- 2009. -- С. 1964--1971.")
+        info("\\bibitem{github_nafnet}")
+        info("MEGVII Research. NAFNet: Results and Pre-trained Models (GoPro) [Электронный ресурс] // GitHub repository. -- 2022. -- URL: \\url{https://github.com/megvii-research/NAFNet} (дата обращения: 16.12.2025)")
+
+    return 0, text
+
 # ========================
 # Основная логика
 # ========================
@@ -550,6 +607,7 @@ def main():
         format_variables_enumerate,
         fix_lists,
         check_parentheses_comments,
+        validate_bibliography_entries,
     ]
 
     global_error = 0
