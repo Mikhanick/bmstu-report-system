@@ -12,7 +12,7 @@ BLUE = \033[34m
 RESET = \033[0m
 
 
-.PHONY: pdf clean pdf-synctex lint-tex open-pdf generate-plantuml check-tools
+.PHONY: pdf clean pdf-synctex lint-tex open-pdf generate-plantuml
 
 # ===== PDF REPORT BUILD CONFIGURATION =====
 PDF_BUILD_DIR := $(PDF_BUILD_DIR_NAME)
@@ -58,7 +58,7 @@ PDF_TARGET := $(PDF_BUILD_DIR)/$(PDF_MAIN_FILE).pdf
 LINT_MARKER := $(PDF_BUILD_DIR)/.linted
 
 # ===== PDF REPORT BUILD RULES =====
-pdf: check-tools generate-plantuml $(PDF_GENERATED_TABLES) $(PDF_TARGET)
+pdf: generate-plantuml $(PDF_GENERATED_TABLES) $(PDF_TARGET)
 
 pdf-synctex: clean $(LINT_MARKER) $(PDF_GENERATED_TABLES) $(BUILD_IMAGE_FILES)
 	@echo "=== Сборка PDF отчёта с synctex ==="
@@ -104,11 +104,6 @@ $(PDF_TABLES_BUILD_DIR)/%.tex: $(PDF_TABLES_SRC_DIR)/%.csv $(PDF_SCRIPTS_DIR)/ge
 	@echo "Генерация таблицы" $@
 	@mkdir -p $(dir $@)
 	@python3 $(PDF_SCRIPTS_DIR)/generate_table.py $< $@
-
-# === PlantUML Rules (только Inkscape) ===
-check-tools:
-	@which $(PLANTUML) >/dev/null || (echo -e "$(RED)PlantUML не найден!$(RESET)"; exit 1)
-	@which $(INKSCAPE) >/dev/null || (echo -e "$(RED)Inkscape не установлен!$(RESET)"; exit 1)
 
 generate-plantuml: $(PLANTUML_PDF_FILES)
 
