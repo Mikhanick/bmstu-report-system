@@ -12,7 +12,7 @@ BLUE = \033[34m
 RESET = \033[0m
 
 
-.PHONY: pdf clean pdf-synctex lint-tex open-pdf generate-plantuml
+.PHONY: pdf clean pdf-synctex lint-tex open-pdf generate-plantuml listings listings-init
 
 # ===== PDF REPORT BUILD CONFIGURATION =====
 PDF_BUILD_DIR := $(PDF_BUILD_DIR_NAME)
@@ -60,7 +60,7 @@ LINT_MARKER := $(PDF_BUILD_DIR)/.linted
 # ===== PDF REPORT BUILD RULES =====
 pdf: generate-plantuml $(PDF_GENERATED_TABLES) $(PDF_TARGET)
 
-pdf-synctex: clean $(LINT_MARKER) $(PDF_GENERATED_TABLES) $(BUILD_IMAGE_FILES)
+pdf-synctex: clean $(LINT_MARKER) $(PDF_GENERATED_TABLES) $(BUILD_IMAGE_FILES) listings
 	@echo "=== Сборка PDF отчёта с synctex ==="
 	pdflatex -synctex=1 \
 		-output-directory=$(PDF_BUILD_DIR) \
@@ -78,11 +78,17 @@ pdf-synctex: clean $(LINT_MARKER) $(PDF_GENERATED_TABLES) $(BUILD_IMAGE_FILES)
 		
 	@echo "Готово: $(PDF_TARGET)"
 
-$(PDF_TARGET): $(LINT_MARKER) $(PDF_BUILD_TEX_FILES) $(BUILD_IMAGE_FILES)
+$(PDF_TARGET): $(LINT_MARKER) $(PDF_BUILD_TEX_FILES) $(BUILD_IMAGE_FILES) listings
 	@echo "=== Сборка PDF отчёта ==="
 	@cd $(PDF_BUILD_DIR) && pdflatex -interaction=batchmode -halt-on-error $(PDF_MAIN_FILE).tex
 	@cd $(PDF_BUILD_DIR) && pdflatex -interaction=batchmode -halt-on-error $(PDF_MAIN_FILE).tex
 	@echo "Готово: $(PDF_TARGET)"
+
+listings-init:
+	make -f scripts/listings/makefile SOURCE_DIR=../code init
+
+listings:
+	make -f scripts/listings/makefile SOURCE_DIR=../code 
 
 $(PDF_BUILD_DIR)/%.tex: $(PDF_SRC_DIR)/%.tex
 	@mkdir -p $(dir $@)
