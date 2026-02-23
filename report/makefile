@@ -62,26 +62,42 @@ pdf: generate-plantuml $(PDF_GENERATED_TABLES) $(PDF_TARGET)
 
 pdf-synctex: clean $(LINT_MARKER) $(PDF_GENERATED_TABLES) $(BUILD_IMAGE_FILES) listings
 	@echo "=== Сборка PDF отчёта с synctex ==="
-	pdflatex -synctex=1 \
+	@pdflatex -synctex=1 \
 		-output-directory=$(PDF_BUILD_DIR) \
 		-interaction=batchmode \
 		-include-directory=$(PDF_SRC_DIR) \
 		-jobname=$$(basename $(OUTPUT_TEXSTUDIO_NAME) .tex) \
-		$(PDF_SRC_DIR)/$(PDF_MAIN_FILE).tex
-		
-	pdflatex -synctex=1 \
+		$(PDF_SRC_DIR)/$(PDF_MAIN_FILE).tex || { \
+		LOG_FILE="$(PDF_BUILD_DIR)/$$(basename $(OUTPUT_TEXSTUDIO_NAME) .tex).log"; \
+		echo -e "$(RED)Ошибка компиляции. Последние 35 строк лога:$(RESET)"; \
+		tail -n 35 "$$LOG_FILE"; \
+		exit 1; \
+	}
+	@pdflatex -synctex=1 \
 		-output-directory=$(PDF_BUILD_DIR) \
 		-interaction=batchmode \
 		-include-directory=$(PDF_SRC_DIR) \
 		-jobname=$$(basename $(OUTPUT_TEXSTUDIO_NAME) .tex) \
-		$(PDF_SRC_DIR)/$(PDF_MAIN_FILE).tex
-		
+		$(PDF_SRC_DIR)/$(PDF_MAIN_FILE).tex || { \
+		LOG_FILE="$(PDF_BUILD_DIR)/$$(basename $(OUTPUT_TEXSTUDIO_NAME) .tex).log"; \
+		echo -e "$(RED)Ошибка компиляции. Последние 35 строк лога:$(RESET)"; \
+		tail -n 35 "$$LOG_FILE"; \
+		exit 1; \
+	}
 	@echo "Готово: $(PDF_TARGET)"
 
 $(PDF_TARGET): $(LINT_MARKER) $(PDF_BUILD_TEX_FILES) $(BUILD_IMAGE_FILES) listings
 	@echo "=== Сборка PDF отчёта ==="
-	@cd $(PDF_BUILD_DIR) && pdflatex -interaction=batchmode -halt-on-error $(PDF_MAIN_FILE).tex
-	@cd $(PDF_BUILD_DIR) && pdflatex -interaction=batchmode -halt-on-error $(PDF_MAIN_FILE).tex
+	@cd $(PDF_BUILD_DIR) && pdflatex -interaction=batchmode -halt-on-error $(PDF_MAIN_FILE).tex || { \
+		LOG_FILE="$(PDF_MAIN_FILE).log"; \
+		{ echo -e "$(RED)Ошибка компиляции. Последние 35 строк лога:$(RESET)"; tail -n 35 "$$LOG_FILE"; } | less -R; \
+		exit 1; \
+	}
+	@cd $(PDF_BUILD_DIR) && pdflatex -interaction=batchmode -halt-on-error $(PDF_MAIN_FILE).tex || { \
+		LOG_FILE="$(PDF_MAIN_FILE).log"; \
+		{ echo -e "$(RED)Ошибка компиляции. Последние 35 строк лога:$(RESET)"; tail -n 35 "$$LOG_FILE"; } | less -R; \
+		exit 1; \
+	}
 	@echo "Готово: $(PDF_TARGET)"
 
 listings-init:
