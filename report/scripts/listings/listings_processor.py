@@ -314,7 +314,7 @@ def generate_latex(tag: str, name: str, parts: List[str], output_path: str):
             f.write("\\end{mylisting}\n")
 
             if i < len(parts) - 1:
-                f.write("\n")
+                f.write("\\clearpage\n")
 
 
 # ============================================================================
