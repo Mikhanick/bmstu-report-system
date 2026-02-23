@@ -302,7 +302,10 @@ def generate_latex(tag: str, name: str, parts: List[str], output_path: str):
             else:
                 # Если частей много, нумеруем ВСЕ (включая первую)
                 title = f"{name} ч.{part_num}"
-                label = f"lst:{tag}-{part_num}"
+                if part_num == 1:
+                    label = f"lst:{tag}"
+                else: 
+                    label = f"lst:{tag}-{part_num}"
 
             f.write(f"\\begin{{mylisting}}{{{title}}}{{{label}}}\n")
             f.write(part)
